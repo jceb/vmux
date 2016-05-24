@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# vmux
+#  Vim/Neovim sessions with the help of tmux
+#
+# Depends: tmux, vim/nvim
+#
+# Copyright (C) 2016 Jan Christoph Ebersbach
+#
+# http://www.e-jc.de/
+#
+# All rights reserved.
+#
+# The source code of this program is made available
+# under the terms of the GNU Affero General Public License version 3
+# (GNU AGPL V3) as published by the Free Software Foundation.
+#
+# Binary versions of this program provided by Univention to you as
+# well as other copyrighted, protected or trademarked materials like
+# Logos, graphics, fonts, specific documentations and configurations,
+# cryptographic keys etc. are subject to a license agreement between
+# you and Univention and not subject to the GNU AGPL V3.
+#
+# In the case you use this program under the terms of the GNU AGPL V3,
+# the program is provided in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public
+# License with the Debian GNU/Linux or Univention distribution in file
+# /usr/share/common-licenses/AGPL-3; if not, see
+# <http://www.gnu.org/licenses/>.
+
+import os
+import subprocess
+import sys
+
+
+class Editor(object):
+	def __init__(self, vmux):
+		self._vmux = vmux
+
+	@property
+	def realdeditor(self):
+		return os.environ.get('VMUX_REALEDITOR_%s' % self.cmd.upper(),
+				os.path.sep + os.path.join('usr', 'bin', self.cmd))
+
+
+class Vim(Editor):
+	cmd = 'vim'
+
+	def __init__(self, vmux):
+		Editor.__init__(self, vmux)
+
+	@property
+	def session_exists(self):
+		if not self._vmux.session:
+			return False
+		for server in subprocess.check_output([self.realdeditor, '--serverlist']).decode('utf-8').strip().split(os.linesep):
+			if server.upper() == self._vmux.session.upper():
+				return True
+		return False
+
+	def open(self, args):
+		stripped_sep = False
+		if args[0] == '--':
+			args.pop(0)
+			stripped_sep = True
+		if args and not stripped_sep and args[0].startswith('-'):
+			return subprocess.call([self.realdeditor, '--servername',
+				self._vmux.session.upper(), *args])
+		else:
+			return subprocess.call([self.realdeditor, '--servername',
+				self._vmux.session.upper(), '--remote-silent', *args])
+
+	def new(self, args):
+		self._vmux.new_session()
+		os.execvp(self.realdeditor, [self.realdeditor, '--servername', self._vmux.session] + args)
+
+
+class Neovim(Editor):
+	cmd = 'nvim'
+
+	def __init__(self, vmux):
+		self._session_dir = None
+		Editor.__init__(self, vmux)
+
+	@property
+	def session_dir(self):
+		if not self._session_dir:
+			self._session_dir = os.environ.get('NVIM_SESSION_DIR',
+					os.path.join(os.environ.get('HOME'), '.cache', 'nvim_sessions'))
+		return self._session_dir
+
+	@property
+	def session_exists(self):
+		if not self._vmux.session:
+			return False
+		return os.path.exists(self.session_address)
+
+	@property
+	def session_address(self):
+		return os.path.join(self.session_dir, self._vmux.session)
+
+	def open(self, args):
+		if args[0] == '--':
+			args.pop(0)
+		from neovim import attach
+		nvim = attach('socket', path=self.session_address)
+		for f in args[::-1]:
+			nvim.command('e %s' % os.path.abspath(os.path.expandvars(os.path.expanduser(f))))
+
+	def new(self, args):
+		self._vmux.new_session()
+		os.execve(self.realdeditor, [self.realdeditor] + args,
+				{'NVIM_LISTEN_ADDRESS': self.session_address})
+
+
+class Vmux(object):
+
+	def __init__(self):
+		if not os.environ.get('TMUX'):
+			raise ValueError('No tmux session found')
+		self._id = None
+		self._session = None
+
+	@property
+	def id(self):
+		if not self._id:
+			self._id = subprocess.check_output(['tmux', 'display-message', '-p', '#S']).decode('utf-8').strip()
+		return self._id
+
+	@property
+	def session_var(self):
+		return 'VMUX_SESSION_%s' % self.id
+
+	@property
+	def session(self):
+		if not self._session:
+			self._session = os.environ.get(self.session_var)
+		return self._session
+
+	def destroy_session(self):
+		subprocess.call(['tmux', 'set-environment', '-u', self.session_var])
+		self._session = None
+
+	def new_session(self):
+		self._session = 'vmux_%s_%s' % (
+				os.getcwd().strip(os.path.sep).replace(os.path.sep, '_'),
+				self.id)
+		subprocess.call(['tmux', 'set-environment', self.session_var, self.session])
+
+
+def main():
+	v = Vmux()
+	editors = [Neovim(v), Vim(v)]
+
+	# open files in an existing session
+	if len(sys.argv) >= 2:
+		for e in editors:
+			if e.session_exists:
+				return e.open(sys.argv[1:])
+
+	# session name exists but there is no corresponding session
+	if v.session:
+		v.destroy_session()
+
+	# start a new session
+	default_editor = os.environ.get('VMUX_DEFAULT_EDITOR', Neovim.cmd)
+	for e in editors:
+		if e.cmd == default_editor:
+			return e.new(sys.argv[1:])
+
+	print('Unable to find editor %s' % default_editor, file=sys.stderr)
+	return 3
+
+if __name__ == "__main__":
+	sys.exit(main())
