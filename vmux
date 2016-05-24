@@ -37,8 +37,9 @@ class Editor(object):
 
 	@property
 	def realdeditor(self):
-		return os.environ.get('VMUX_REALEDITOR_%s' % self.cmd.upper(),
-				os.path.sep + os.path.join('usr', 'bin', self.cmd))
+		return os.path.expandvars(os.path.expanduser(
+			os.environ.get('VMUX_REALEDITOR_%s' % self.cmd.upper(),
+				os.path.sep + os.path.join('usr', 'bin', self.cmd))))
 
 	@classmethod
 	def get_default_editor(cls, editors):
@@ -93,8 +94,9 @@ class Neovim(Editor):
 	@property
 	def session_dir(self):
 		if not self._session_dir:
-			self._session_dir = os.environ.get('NVIM_SESSION_DIR',
-					os.path.join(os.environ.get('HOME'), '.cache', 'nvim_sessions'))
+			self._session_dir = os.path.expandvars(os.path.expanduser(
+				os.environ.get('VMUX_NVIM_SESSION_DIR',
+					os.path.join(os.environ.get('HOME'), '.cache', 'nvim_sessions'))))
 		return self._session_dir
 
 	@property
