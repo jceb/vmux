@@ -163,7 +163,7 @@ class Vmux(object):
 
 	def new_session(self):
 		self._session = 'vmux_%s_%s' % (
-				os.getcwd().strip(os.path.sep).replace(os.path.sep, '_'),
+				os.getcwd().strip(os.path.sep).replace(os.path.sep, '_').replace(' ', '_'),
 				self.id)
 		cmd = ['tmux', 'set-environment', self.session_var, self.session]
 		if DEBUG:
