@@ -47,6 +47,13 @@ class Editor(object):
 		return os.environ.get('VMUX_REALEDITOR_%s' % self.cmd.upper(),
 				os.path.sep + os.path.join('usr', 'bin', self.cmd))
 
+	@classmethod
+	def get_default_editor(cls, editors):
+		default_editor = os.environ.get('VMUX_DEFAULT_EDITOR', Neovim.cmd)
+		for e in editors:
+			if e.cmd == default_editor:
+				return e
+
 
 class Vim(Editor):
 	cmd = 'vim'
@@ -75,9 +82,12 @@ class Vim(Editor):
 			return subprocess.call([self.realdeditor, '--servername',
 				self._vmux.session.upper(), '--remote-silent', *args])
 
-	def new(self, args):
-		self._vmux.new_session()
-		os.execvp(self.realdeditor, [self.realdeditor, '--servername', self._vmux.session] + args)
+	def new(self, args, new_session=True):
+		cmd = [self.realdeditor]
+		if new_session:
+			self._vmux.new_session()
+			cmd += ['--servername', self._vmux.session]
+		os.execvp(self.realdeditor, cmd + args)
 
 
 class Neovim(Editor):
@@ -112,11 +122,13 @@ class Neovim(Editor):
 		for f in args[::-1]:
 			nvim.command('e %s' % os.path.abspath(os.path.expandvars(os.path.expanduser(f))))
 
-	def new(self, args):
-		self._vmux.new_session()
+	def new(self, args, new_session=True):
+		if new_session:
+			self._vmux.new_session()
 		env = {}
 		env.update(os.environ)
-		env.update({'NVIM_LISTEN_ADDRESS': self.session_address})
+		if new_session:
+			env.update({'NVIM_LISTEN_ADDRESS': self.session_address})
 		cmd = [self.realdeditor] + args
 		if DEBUG:
 			print(' '.join(cmd))
@@ -125,7 +137,6 @@ class Neovim(Editor):
 
 
 class Vmux(object):
-
 	def __init__(self):
 		if not os.environ.get('TMUX'):
 			raise ValueError('No tmux session found')
@@ -166,8 +177,20 @@ class Vmux(object):
 
 
 def main():
-	v = Vmux()
+	v = None
+	try:
+		v = Vmux()
+	except ValueError:
+		# ignore errofr, just start the default editor without any session
+		pass
 	editors = [Neovim(v), Vim(v)]
+
+	if not v:
+		default_editor = Editor.get_default_editor(editors)
+		if not default_editor:
+			print('Unable to find editor %s' % default_editor, file=sys.stderr)
+			return 3
+		return default_editor.new(sys.argv[1:], new_session=False)
 
 	# open files in an existing session
 	if len(sys.argv) >= 2:
@@ -180,13 +203,12 @@ def main():
 		v.destroy_session()
 
 	# start a new session
-	default_editor = os.environ.get('VMUX_DEFAULT_EDITOR', Neovim.cmd)
-	for e in editors:
-		if e.cmd == default_editor:
-			return e.new(sys.argv[1:])
+	default_editor = Editor.get_default_editor(editors)
+	if not default_editor:
+		print('Unable to find editor %s' % default_editor, file=sys.stderr)
+		return 3
+	return default_editor.new(sys.argv[1:])
 
-	print('Unable to find editor %s' % default_editor, file=sys.stderr)
-	return 3
 
 if __name__ == "__main__":
 	sys.exit(main())
