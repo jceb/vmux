@@ -36,6 +36,7 @@ import os
 import subprocess
 import sys
 
+DEBUG = os.environ.get('VMUX_DEBUG')
 
 class Editor(object):
 	def __init__(self, vmux):
@@ -113,8 +114,14 @@ class Neovim(Editor):
 
 	def new(self, args):
 		self._vmux.new_session()
-		os.execve(self.realdeditor, [self.realdeditor] + args,
-				{'NVIM_LISTEN_ADDRESS': self.session_address})
+		env = {}
+		env.update(os.environ)
+		env.update({'NVIM_LISTEN_ADDRESS': self.session_address})
+		cmd = [self.realdeditor] + args
+		if DEBUG:
+			print(' '.join(cmd))
+			print(env)
+		os.execve(self.realdeditor, cmd, env)
 
 
 class Vmux(object):
@@ -142,14 +149,20 @@ class Vmux(object):
 		return self._session
 
 	def destroy_session(self):
-		subprocess.call(['tmux', 'set-environment', '-u', self.session_var])
+		cmd = ['tmux', 'set-environment', '-u', self.session_var]
+		if DEBUG:
+			print(' '.join(cmd))
+		subprocess.call(cmd)
 		self._session = None
 
 	def new_session(self):
 		self._session = 'vmux_%s_%s' % (
 				os.getcwd().strip(os.path.sep).replace(os.path.sep, '_'),
 				self.id)
-		subprocess.call(['tmux', 'set-environment', self.session_var, self.session])
+		cmd = ['tmux', 'set-environment', self.session_var, self.session]
+		if DEBUG:
+			print(' '.join(cmd))
+		subprocess.call(cmd)
 
 
 def main():
