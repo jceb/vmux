@@ -42,7 +42,7 @@ class Editor(object):
 
 	@classmethod
 	def get_default_editor(cls, editors):
-		default_editor = os.environ.get('VMUX_DEFAULT_EDITOR', Neovim.cmd)
+		default_editor = os.environ.get('VMUX_EDITOR', Neovim.cmd)
 		for e in editors:
 			if e.cmd == default_editor:
 				return e

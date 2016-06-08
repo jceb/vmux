@@ -1,2 +1,2 @@
 #!/bin/sh
-VMUX_DEFAULT_EDITOR=gvim VMUX_GLOBAL=1 exec vmux "$@"
+VMUX_EDITOR=gvim VMUX_GLOBAL=1 exec vmux "$@"

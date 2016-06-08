@@ -48,8 +48,8 @@ script of a different editor is used.
 
 Define default editor:
 
-    # export environment variable VMUX_DEFAULT_EDITOR, either vim or nvim
-    export VMUX_DEFAULT_EDITOR=nvim
+    # export environment variable VMUX_EDITOR, either vim or nvim
+    export VMUX_EDITOR=nvim
 
 Define path to the real editor executables.  This is required if the wrapper
 scripts are used that will hide the real editors in `$PATH`.
