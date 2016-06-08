@@ -56,6 +56,12 @@ scripts are used that will hide the real editors in `$PATH`.
 
     export VMUX_REALEDITOR_VIM=/usr/bin/vim
     export VMUX_REALEDITOR_NVIM=/usr/bin/nvim
+    export VMUX_REALEDITOR_GVIM=/usr/bin/gvim
+
+Define that a global session should be started.  One global and multiple local
+sessions can exists next to one another:
+
+    export VMUX_GLOBAL=1
 
 Define socket path for `nvim`:
 

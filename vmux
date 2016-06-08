@@ -56,9 +56,11 @@ class Vim(Editor):
 
 	@property
 	def session_exists(self):
+		print(self._vmux.session)
 		if not self._vmux.session:
 			return False
 		for server in subprocess.check_output([self.realdeditor, '--serverlist']).decode('utf-8').strip().split(os.linesep):
+			print(server, self._vmux.session)
 			if server.upper() == self._vmux.session.upper():
 				return True
 		return False
@@ -143,6 +145,7 @@ class Vmux(object):
 			raise ValueError('No tmux session found')
 		self._id = None
 		self._session = None
+		self._global = None
 
 	@property
 	def id(self):
@@ -151,27 +154,44 @@ class Vmux(object):
 		return self._id
 
 	@property
+	def is_global(self):
+		if self._global is None:
+			self._global = bool(os.environ.get('VMUX_GLOBAL'))
+		return self._global
+
+	@property
 	def session_var(self):
+		if self.is_global:
+			return 'VMUX_SESSION'
 		return 'VMUX_SESSION_%s' % self.id
 
 	@property
 	def session(self):
 		if not self._session:
+			# first try to identify the session from the environment variable
 			self._session = os.environ.get(self.session_var)
+		if not self._session:
+			# if the environment didn't produce any result, generate a new
+			# session name
+			self._session = 'vmux%s' % ('-global' if self.is_global else '_%s' % self.id)
 		return self._session
 
 	def destroy_session(self):
-		cmd = ['tmux', 'set-environment', '-u', self.session_var]
+		cmd = ['tmux', 'set-environment', '-u']
+		if self.is_global:
+			cmd.append('-g')
+		cmd.append(self.session_var)
 		if DEBUG:
 			print(' '.join(cmd))
 		subprocess.call(cmd)
 		self._session = None
+		self._global = None
 
 	def new_session(self):
-		self._session = 'vmux_%s_%s' % (
-				os.getcwd().strip(os.path.sep).replace(os.path.sep, '_').replace(' ', '_'),
-				self.id)
-		cmd = ['tmux', 'set-environment', self.session_var, self.session]
+		cmd = ['tmux', 'set-environment']
+		if self.is_global:
+			cmd.append('-g')
+		cmd.extend((self.session_var, self.session))
 		if DEBUG:
 			print(' '.join(cmd))
 		subprocess.call(cmd)
