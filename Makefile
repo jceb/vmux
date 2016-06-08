@@ -1,7 +1,7 @@
 # #!/usr/bin/env make -f
 # See LICENSE file for copyright and license details.
 
-VERSION = 0.2
+VERSION = 0.3
 DESTDIR = /usr
 SCRIPTS = scripts/nvim scripts/vim scripts/gvim
 SRC = vmux
