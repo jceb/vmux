@@ -80,4 +80,5 @@ to the current `tmux` session.  The value of the variable is set to
 # Similar projects
 
 * [tmux-omnivim](https://github.com/andy-lang/tmux-omnivim) creates one global
-  session while `vmux` creates one session per `tmux` session
+  session while `vmux` creates one session per `tmux` session and it also
+  supports one global session next to multiple local sessions.
