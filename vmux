@@ -37,8 +37,7 @@ class Editor(object):
 
 	@property
 	def realdeditor(self):
-		return os.path.expandvars(os.path.expanduser(
-			os.environ.get('VMUX_REALEDITOR_%s' % self.cmd.upper(),
+		return os.path.expandvars(os.path.expanduser(os.environ.get('VMUX_REALEDITOR_%s' % self.cmd.upper(),
 				os.path.sep + os.path.join('usr', 'bin', self.cmd))))
 
 	@classmethod
@@ -82,6 +81,13 @@ class Vim(Editor):
 			self._vmux.new_session()
 			cmd += ['--servername', self._vmux.session]
 		os.execvp(self.realdeditor, cmd + args)
+
+
+class Gvim(Vim):
+	cmd = 'gvim'
+
+	def __init__(self, vmux):
+		Vim.__init__(self, vmux)
 
 
 class Neovim(Editor):
@@ -178,7 +184,7 @@ def main():
 	except ValueError:
 		# ignore errofr, just start the default editor without any session
 		pass
-	editors = [Neovim(v), Vim(v)]
+	editors = [Neovim(v), Vim(v), Gvim(v)]
 
 	if not v:
 		default_editor = Editor.get_default_editor(editors)

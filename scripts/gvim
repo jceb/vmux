@@ -1,0 +1,2 @@
+#!/bin/sh
+VMUX_DEFAULT_EDITOR=gvim exec vmux "$@"

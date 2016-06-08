@@ -3,7 +3,7 @@
 
 VERSION = 0.1
 DESTDIR = /usr
-SCRIPTS = scripts/nvim scripts/vim
+SCRIPTS = scripts/nvim scripts/vim scripts/gvim
 SRC = vmux
 
 all: install-wrapper
