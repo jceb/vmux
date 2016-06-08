@@ -65,6 +65,8 @@ class Vim(Editor):
 
 	def open(self, args):
 		stripped_sep = False
+		os.system('tmux select-window -t %s' % self._vmux.session)
+		os.system('tmux select-pane   -t %s' % self._vmux.session)
 		if args[0] == '--':
 			args.pop(0)
 			stripped_sep = True
@@ -116,6 +118,8 @@ class Neovim(Editor):
 		return os.path.join(self.session_dir, self._vmux.session)
 
 	def open(self, args):
+		os.system('tmux select-window -t %s' % self._vmux.session)
+		os.system('tmux select-pane   -t %s' % self._vmux.session)
 		if args[0] == '--':
 			args.pop(0)
 		from neovim import attach
@@ -171,7 +175,7 @@ class Vmux(object):
 		if not self._session:
 			# if the environment didn't produce any result, generate a new
 			# session name
-			self._session = 'vmux%s' % ('-global' if self.is_global else '_%s' % self.id)
+			self._session = os.popen('tmux list-panes -F "#D"').read().rstrip()
 		return self._session
 
 	def destroy_session(self):
