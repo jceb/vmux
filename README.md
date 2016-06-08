@@ -15,6 +15,7 @@ vim/neovim session handler within tmux
   be reused even if the other editor is called, e.g. `vim`
 * A new session is started if the old session doesn't exist anymore
 * One global editor session and multiple local sessions are supported
+* Select tmux pane with vim automatically for local sessions
 
 # Installation
 
@@ -63,6 +64,10 @@ Define that a global session should be started.  One global and multiple local
 sessions can exists next to one another:
 
     export VMUX_GLOBAL=1
+
+Define that the tmux pane shall not be selected automatically:
+
+    export VMUX_NOT_SELECT_PANE=1
 
 Define socket path for `nvim`:
 

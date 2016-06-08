@@ -142,14 +142,29 @@ class Vmux(object):
 		if not os.environ.get('TMUX'):
 			raise ValueError('No tmux session found')
 		self._id = None
+		self._pane_id = None
 		self._session = None
 		self._global = None
+		self._shall_select_pane = None
+		self._shall_select_global_pane = None
+
+	@property
+	def shall_select_pane(self):
+		if self._shall_select_pane is None:
+			self._shall_select_pane = not bool(os.environ.get('VMUX_NOT_SELECT_PANE'))
+		return self._shall_select_pane
 
 	@property
 	def id(self):
 		if not self._id:
 			self._id = subprocess.check_output(['tmux', 'display-message', '-p', '#S']).decode('utf-8').strip()
 		return self._id
+
+	@property
+	def pane_id(self):
+		if not self._pane_id:
+			self._pane_id = os.environ.get('TMUX_PANE')
+		return self._pane_id
 
 	@property
 	def is_global(self):
@@ -171,7 +186,7 @@ class Vmux(object):
 		if not self._session:
 			# if the environment didn't produce any result, generate a new
 			# session name
-			self._session = 'vmux%s' % ('-global' if self.is_global else '_%s' % self.id)
+			self._session = 'vmux%s' % ('-global' if self.is_global else '_%s' % self.pane_id[1:])
 		return self._session
 
 	def destroy_session(self):
@@ -194,6 +209,29 @@ class Vmux(object):
 			print(' '.join(cmd))
 		subprocess.call(cmd)
 
+	def select_pane(self):
+		if self.is_global:
+			# can't select a global session since it doesn't store the pane id
+			return
+		cmd = ('tmux', 'list-panes', '-a', '-F', '#{session_id} #{window_id} #D')
+		if DEBUG:
+			print(' '.join(cmd))
+		session_pane_id = self.session.replace('vmux_', '')
+		for line in subprocess.check_output(cmd).decode('utf-8').split(os.linesep):
+			ids = line.split()
+			if len(ids) != 3:
+				continue
+			if ids[0][1:] == self.id and ids[2][1:] == session_pane_id:
+				cmd = ('tmux', 'select-window', '-t', ids[1])
+				if DEBUG:
+					print(' '.join(cmd))
+				subprocess.call(cmd)
+				cmd = ('tmux', 'select-pane', '-t', ids[2])
+				if DEBUG:
+					print(' '.join(cmd))
+				subprocess.call(cmd)
+				break
+
 
 def main():
 	v = None
@@ -215,6 +253,8 @@ def main():
 	if len(sys.argv) >= 2:
 		for e in editors:
 			if e.session_exists:
+				if v.shall_select_pane:
+					v.select_pane()
 				return e.open(sys.argv[1:])
 
 	# session name exists but there is no corresponding session
