@@ -17,7 +17,7 @@ vim/neovim session handler within tmux
 
 # Installation
 
-Python3 is required as well as `tmux` and `vim` or `nvim`.
+Python3 is required as well as `tmux` and `vim`, `gvim` or `nvim`.
 
 Clone the repository and install vmux:
 
