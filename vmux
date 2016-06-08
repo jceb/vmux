@@ -56,11 +56,9 @@ class Vim(Editor):
 
 	@property
 	def session_exists(self):
-		print(self._vmux.session)
 		if not self._vmux.session:
 			return False
 		for server in subprocess.check_output([self.realdeditor, '--serverlist']).decode('utf-8').strip().split(os.linesep):
-			print(server, self._vmux.session)
 			if server.upper() == self._vmux.session.upper():
 				return True
 		return False
