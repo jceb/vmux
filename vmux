@@ -70,10 +70,10 @@ class Vim(Editor):
 			stripped_sep = True
 		if args and not stripped_sep and args[0].startswith('-'):
 			return subprocess.call([self.realdeditor, '--servername',
-				self._vmux.session.upper(), *args])
+				self._vmux.session.upper()] + args)
 		else:
 			return subprocess.call([self.realdeditor, '--servername',
-				self._vmux.session.upper(), '--remote-silent', *args])
+				self._vmux.session.upper(), '--remote-silent'] + args)
 
 	def new(self, args, new_session=True):
 		cmd = [self.realdeditor]
