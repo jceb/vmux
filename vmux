@@ -258,7 +258,7 @@ def main():
 	if len(sys.argv) >= 2:
 		for e in editors:
 			if e.session_exists:
-				if v.shall_select_pane:
+				if v.shall_select_pane and e.cli:
 					v.select_pane()
 				return e.open(sys.argv[1:])
 
