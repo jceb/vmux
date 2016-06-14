@@ -82,7 +82,7 @@ class Vim(Editor):
 	def new(self, args, new_session=True):
 		cmd = [self.realdeditor]
 		if new_session:
-			self._vmux.new_session()
+			self._vmux.new_session(self.cli)
 			cmd += ['--servername', self._vmux.session]
 		os.execvp(self.realdeditor, cmd + args)
 
@@ -131,7 +131,7 @@ class Neovim(Editor):
 
 	def new(self, args, new_session=True):
 		if new_session:
-			self._vmux.new_session()
+			self._vmux.new_session(self.cli)
 		env = {}
 		env.update(os.environ)
 		if new_session:
@@ -150,6 +150,7 @@ class Vmux(object):
 		self._id = None
 		self._pane_id = None
 		self._session = None
+		self._global_session = None
 		self._global = None
 		self._shall_select_pane = None
 		self._shall_select_global_pane = None
@@ -163,7 +164,7 @@ class Vmux(object):
 	@property
 	def id(self):
 		if not self._id:
-			self._id = subprocess.check_output(['tmux', 'display-message', '-p', '#S']).decode('utf-8').strip()
+			self._id = subprocess.check_output(['tmux', 'display-message', '-p', '#{session_id}']).decode('utf-8').strip().strip('$')
 		return self._id
 
 	@property
@@ -195,6 +196,15 @@ class Vmux(object):
 			self._session = 'global' if self.is_global else self.pane_id
 		return self._session
 
+	@property
+	def global_session(self):
+		# Attention, this property is fundamentally different from self.pane_id.
+		# This property is managed by vmux in order to store the pane id of
+		# global sessions
+		if not self._global_session:
+			self._global_session = os.environ.get('VMUX_GLOBAL_SESSION')
+		return self._global_session
+
 	def destroy_session(self):
 		cmd = ['tmux', 'set-environment', '-u']
 		if self.is_global:
@@ -206,7 +216,7 @@ class Vmux(object):
 		self._session = None
 		self._global = None
 
-	def new_session(self):
+	def new_session(self, cli):
 		cmd = ['tmux', 'set-environment']
 		if self.is_global:
 			cmd.append('-g')
@@ -214,19 +224,22 @@ class Vmux(object):
 		if DEBUG:
 			print(' '.join(cmd))
 		subprocess.call(cmd)
+		if self.is_global and cli:
+			cmd = ['tmux', 'set-environment', '-g', 'VMUX_GLOBAL_PANE', self.pane_id]
+			if DEBUG:
+				print(' '.join(cmd))
+			subprocess.call(cmd)
 
 	def select_pane(self):
-		if self.is_global:
-			# can't select a global session since it doesn't store the pane id
-			return
 		cmd = ('tmux', 'list-panes', '-a', '-F', '#{window_id} #D')
 		if DEBUG:
 			print(' '.join(cmd))
+		pane_id = self.global_session if self.is_global else self.session
 		for line in subprocess.check_output(cmd).decode('utf-8').split(os.linesep):
 			ids = line.split()
 			if len(ids) != 2:
 				continue
-			if ids[1] == self.session:
+			if ids[1] == pane_id:
 				cmd = ('tmux', 'select-window', '-t', ids[0])
 				if DEBUG:
 					print(' '.join(cmd))

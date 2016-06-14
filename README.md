@@ -8,14 +8,14 @@ vim/neovim session handler within tmux
 # Features
 
 * Each `tmux` session has its own editor session
+* One global editor session can be started
 * Suports [gvim, vim](http://vim.org/) and [neovim](http://neovim.org/)
 * Seamless integration with `gvim`, `vim` and `nvim` through wrapper scripts
   that directly call `vmux` - keep your muscle's memory :-)
 * Once a session has been started in one editor, e.g. `nvim`, the session will
-  be reused even if the other editor is called, e.g. `vim`
+  be reused even if another editor is called, e.g. `vim`
 * A new session is started if the old session doesn't exist anymore
-* One global editor session and multiple local sessions are supported
-* Select tmux pane with vim automatically for local sessions
+* Automatically select tmux pane running the local or global vim session
 
 # Installation
 
@@ -35,7 +35,8 @@ Clone the repository and install vmux:
 
 # Usage
 
-Start editor session through `vmux` or `vim` and `nvim` wrapper scripts:
+Start editor session through `vmux` or `vim.vmux`, `nvim.vmux` and `gvim.vmux`
+wrapper scripts:
 
     tmux
     vmux MYFILE
@@ -80,10 +81,10 @@ Turn on debugging:
 # How it works
 
 When `vmux` is called, it defines a variable `VMUX_SESSION_<ID>` that is unique
-to the current `tmux` session.  The value of the variable is set to
-`vmux_<ID>` that is used as session name for `vim` and `nvim`.  Furthermore,
-the global session that is started through `gvim` is stored in the environment
-variable `VMUX_SESSION`.  The session name is set to `vmux-global`.
+to the current `tmux` session.  The value of the variable is set to `<ID>` that
+is used as session name for `vim.vmux` and `nvim.vmux`.  Furthermore, the global
+session that is started through `gvim.vmux` is stored in the environment
+variable `VMUX_SESSION`.  The session name is set to `global`.
 
 # Similar projects
 
