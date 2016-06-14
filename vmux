@@ -213,19 +213,19 @@ class Vmux(object):
 		if self.is_global:
 			# can't select a global session since it doesn't store the pane id
 			return
-		cmd = ('tmux', 'list-panes', '-a', '-F', '#{session_id} #{window_id} #D')
+		cmd = ('tmux', 'list-panes', '-a', '-F', '#{window_id} #D')
 		if DEBUG:
 			print(' '.join(cmd))
 		for line in subprocess.check_output(cmd).decode('utf-8').split(os.linesep):
 			ids = line.split()
-			if len(ids) != 3:
+			if len(ids) != 2:
 				continue
-			if ids[0][1:] == self.id and ids[2] == self.session:
-				cmd = ('tmux', 'select-window', '-t', ids[1])
+			if ids[1] == self.session:
+				cmd = ('tmux', 'select-window', '-t', ids[0])
 				if DEBUG:
 					print(' '.join(cmd))
 				subprocess.call(cmd)
-				cmd = ('tmux', 'select-pane', '-t', ids[2])
+				cmd = ('tmux', 'select-pane', '-t', ids[1])
 				if DEBUG:
 					print(' '.join(cmd))
 				subprocess.call(cmd)
