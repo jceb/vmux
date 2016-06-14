@@ -186,7 +186,7 @@ class Vmux(object):
 		if not self._session:
 			# if the environment didn't produce any result, generate a new
 			# session name
-			self._session = 'vmux%s' % ('-global' if self.is_global else '_%s' % self.pane_id[1:])
+			self._session = 'global' if self.is_global else self.pane_id
 		return self._session
 
 	def destroy_session(self):
@@ -216,12 +216,11 @@ class Vmux(object):
 		cmd = ('tmux', 'list-panes', '-a', '-F', '#{session_id} #{window_id} #D')
 		if DEBUG:
 			print(' '.join(cmd))
-		session_pane_id = self.session.replace('vmux_', '')
 		for line in subprocess.check_output(cmd).decode('utf-8').split(os.linesep):
 			ids = line.split()
 			if len(ids) != 3:
 				continue
-			if ids[0][1:] == self.id and ids[2][1:] == session_pane_id:
+			if ids[0][1:] == self.id and ids[2] == self.session:
 				cmd = ('tmux', 'select-window', '-t', ids[1])
 				if DEBUG:
 					print(' '.join(cmd))
