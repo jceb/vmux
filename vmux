@@ -32,6 +32,9 @@ import sys
 DEBUG = os.environ.get('VMUX_DEBUG')
 
 class Editor(object):
+	cmd = None
+	cli = None
+
 	def __init__(self, vmux):
 		self._vmux = vmux
 
@@ -50,6 +53,7 @@ class Editor(object):
 
 class Vim(Editor):
 	cmd = 'vim'
+	cli = True
 
 	def __init__(self, vmux):
 		Editor.__init__(self, vmux)
@@ -85,6 +89,7 @@ class Vim(Editor):
 
 class Gvim(Vim):
 	cmd = 'gvim'
+	cli = False
 
 	def __init__(self, vmux):
 		Vim.__init__(self, vmux)
@@ -92,6 +97,7 @@ class Gvim(Vim):
 
 class Neovim(Editor):
 	cmd = 'nvim'
+	cli = True
 
 	def __init__(self, vmux):
 		self._session_dir = None
