@@ -29,263 +29,286 @@ import os
 import subprocess
 import sys
 
-DEBUG = os.environ.get('VMUX_DEBUG')
+def get_tmux_environ(key, is_global=False):
+    cmd = ['tmux', 'show-environment']
+    if is_global:
+        cmd.append('-g')
+    env = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    env_list = env.communicate()[0].decode('utf-8').split('\n')
+    env_pair_list = [x.split('=') for x in env_list]
+    for env_pair in env_pair_list:
+        if env_pair[0] == key:
+            return env_pair[1] if len(env_pair) == 2 else None
+
+def get_environ(key, default=None):
+    if (os.environ.get('TMUX')):
+        global_env = get_tmux_environ(key, True)
+        env = global_env if global_env else get_tmux_environ(key, False)
+        if env:
+            return env
+        else:
+            return os.environ.get(key, default)
+
+    return os.environ.get(key, default)
+
+DEBUG = get_environ('VMUX_DEBUG')
 
 class Editor(object):
-	cmd = None
-	cli = None
+    cmd = None
+    cli = None
 
-	def __init__(self, vmux):
-		self._vmux = vmux
+    def __init__(self, vmux):
+        self._vmux = vmux
 
-	@property
-	def realdeditor(self):
-		return os.path.expandvars(os.path.expanduser(os.environ.get('VMUX_REALEDITOR_%s' % self.cmd.upper(),
-				os.path.sep + os.path.join('usr', 'bin', self.cmd))))
+    @property
+    def realdeditor(self):
+        return os.path.expandvars(os.path.expanduser(get_environ('VMUX_REALEDITOR_%s' % self.cmd.upper(),
+                os.path.sep + os.path.join('usr', 'bin', self.cmd))))
 
-	@classmethod
-	def get_default_editor(cls, editors):
-		default_editor = os.environ.get('VMUX_EDITOR', Neovim.cmd)
-		for e in editors:
-			if e.cmd == default_editor:
-				return e
+    @classmethod
+    def get_default_editor(cls, editors):
+        default_editor = get_environ('VMUX_EDITOR', Neovim.cmd)
+        for e in editors:
+            if e.cmd == default_editor:
+                return e
 
 
 class Vim(Editor):
-	cmd = 'vim'
-	cli = True
+    cmd = 'vim'
+    cli = True
 
-	def __init__(self, vmux):
-		Editor.__init__(self, vmux)
+    def __init__(self, vmux):
+        Editor.__init__(self, vmux)
 
-	@property
-	def session_exists(self):
-		if not self._vmux.session:
-			return False
-		for server in subprocess.check_output([self.realdeditor, '--serverlist']).decode('utf-8').strip().split(os.linesep):
-			if server.upper() == self._vmux.session.upper():
-				return True
-		return False
+    @property
+    def session_exists(self):
+        if not self._vmux.session:
+            return False
+        for server in subprocess.check_output([self.realdeditor, '--serverlist']).decode('utf-8').strip().split(os.linesep):
+            if server.upper() == self._vmux.session.upper():
+                return True
+        return False
 
-	def open(self, args):
-		stripped_sep = False
-		if args[0] == '--':
-			args.pop(0)
-			stripped_sep = True
-		if args and not stripped_sep and args[0].startswith('-'):
-			return subprocess.call([self.realdeditor, '--servername',
-				self._vmux.session.upper()] + args)
-		else:
-			return subprocess.call([self.realdeditor, '--servername',
-				self._vmux.session.upper(), '--remote-silent'] + args)
+    def open(self, args):
+        stripped_sep = False
+        if args[0] == '--':
+            args.pop(0)
+            stripped_sep = True
+        if args and not stripped_sep and args[0].startswith('-'):
+            return subprocess.call([self.realdeditor, '--servername',
+                self._vmux.session.upper()] + args)
+        else:
+            return subprocess.call([self.realdeditor, '--servername',
+                self._vmux.session.upper(), '--remote-silent'] + args)
 
-	def new(self, args, new_session=True):
-		cmd = [self.realdeditor]
-		if new_session:
-			self._vmux.new_session(self.cli)
-			cmd += ['--servername', self._vmux.session]
-		os.execvp(self.realdeditor, cmd + args)
+    def new(self, args, new_session=True):
+        cmd = [self.realdeditor]
+        if new_session:
+            self._vmux.new_session(self.cli)
+            cmd += ['--servername', self._vmux.session]
+        os.execvp(self.realdeditor, cmd + args)
 
 
 class Gvim(Vim):
-	cmd = 'gvim'
-	cli = False
+    cmd = 'gvim'
+    cli = False
 
-	def __init__(self, vmux):
-		Vim.__init__(self, vmux)
+    def __init__(self, vmux):
+        Vim.__init__(self, vmux)
 
 
 class Neovim(Editor):
-	cmd = 'nvim'
-	cli = True
+    cmd = 'nvim'
+    cli = True
 
-	def __init__(self, vmux):
-		self._session_dir = None
-		Editor.__init__(self, vmux)
+    def __init__(self, vmux):
+        self._session_dir = None
+        Editor.__init__(self, vmux)
 
-	@property
-	def session_dir(self):
-		if not self._session_dir:
-			self._session_dir = os.path.expandvars(os.path.expanduser(
-				os.environ.get('VMUX_NVIM_SESSION_DIR',
-					os.path.join(os.environ.get('HOME'), '.cache', 'nvim_sessions'))))
-		return self._session_dir
+    @property
+    def session_dir(self):
+        if not self._session_dir:
+            self._session_dir = os.path.expandvars(os.path.expanduser(
+                get_environ('VMUX_NVIM_SESSION_DIR',
+                    os.path.join(get_environ('HOME'), '.cache', 'nvim_sessions'))))
+        return self._session_dir
 
-	@property
-	def session_exists(self):
-		if not self._vmux.session:
-			return False
-		return os.path.exists(self.session_address)
+    @property
+    def session_exists(self):
+        if not self._vmux.session:
+            return False
+        return os.path.exists(self.session_address)
 
-	@property
-	def session_address(self):
-		return os.path.join(self.session_dir, self._vmux.session)
+    @property
+    def session_address(self):
+        return os.path.join(self.session_dir, self._vmux.session)
 
-	def open(self, args):
-		if args[0] == '--':
-			args.pop(0)
-		from neovim import attach
-		nvim = attach('socket', path=self.session_address)
-		for f in args[::-1]:
-			nvim.command('e %s' % os.path.abspath(os.path.expandvars(os.path.expanduser(f))))
+    def open(self, args):
+        if args[0] == '--':
+            args.pop(0)
+        from neovim import attach
+        nvim = attach('socket', path=self.session_address)
+        for f in args[::-1]:
+            nvim.command('e %s' % os.path.abspath(os.path.expandvars(os.path.expanduser(f))))
 
-	def new(self, args, new_session=True):
-		if new_session:
-			self._vmux.new_session(self.cli)
-		env = {}
-		env.update(os.environ)
-		if new_session:
-			env.update({'NVIM_LISTEN_ADDRESS': self.session_address})
-		cmd = [self.realdeditor] + args
-		if DEBUG:
-			print(' '.join(cmd))
-			print(env)
-		os.execve(self.realdeditor, cmd, env)
+    def new(self, args, new_session=True):
+        if new_session:
+            self._vmux.new_session(self.cli)
+        env = {}
+        env.update(os.environ)
+        if new_session:
+            env.update({'NVIM_LISTEN_ADDRESS': self.session_address})
+        cmd = [self.realdeditor] + args
+        if DEBUG:
+            print(' '.join(cmd))
+            print(env)
+        os.execve(self.realdeditor, cmd, env)
 
 
 class Vmux(object):
-	def __init__(self):
-		if not os.environ.get('TMUX'):
-			raise ValueError('No tmux session found')
-		self._id = None
-		self._pane_id = None
-		self._session = None
-		self._global_session = None
-		self._global = None
-		self._shall_select_pane = None
-		self._shall_select_global_pane = None
+    def __init__(self):
+        if not get_environ('TMUX'):
+            raise ValueError('No tmux session found')
+        self._id = None
+        self._pane_id = None
+        self._session = None
+        self._global_session = None
+        self._global = None
+        self._shall_select_pane = None
+        self._shall_select_global_pane = None
 
-	@property
-	def shall_select_pane(self):
-		if self._shall_select_pane is None:
-			self._shall_select_pane = not bool(os.environ.get('VMUX_NOT_SELECT_PANE'))
-		return self._shall_select_pane
+    @property
+    def shall_select_pane(self):
+        if self._shall_select_pane is None:
+            self._shall_select_pane = not bool(get_environ('VMUX_NOT_SELECT_PANE'))
+        return self._shall_select_pane
 
-	@property
-	def id(self):
-		if not self._id:
-			self._id = subprocess.check_output(['tmux', 'display-message', '-p', '#{session_id}']).decode('utf-8').strip().strip('$')
-		return self._id
+    @property
+    def id(self):
+        if not self._id:
+            self._id = subprocess.check_output(['tmux', 'display-message', '-p', '#{session_id}']).decode('utf-8').strip().strip('$')
+        return self._id
 
-	@property
-	def pane_id(self):
-		if not self._pane_id:
-			self._pane_id = os.environ.get('TMUX_PANE')
-		return self._pane_id
+    @property
+    def pane_id(self):
+        if not self._pane_id:
+            self._pane_id = get_environ('TMUX_PANE')
+        return self._pane_id
 
-	@property
-	def is_global(self):
-		if self._global is None:
-			self._global = bool(os.environ.get('VMUX_GLOBAL'))
-		return self._global
+    @property
+    def is_global(self):
+        if self._global is None:
+            self._global = bool(get_environ('VMUX_GLOBAL'))
+        return self._global
 
-	@property
-	def session_var(self):
-		if self.is_global:
-			return 'VMUX_SESSION'
-		return 'VMUX_SESSION_%s' % self.id
+    @property
+    def session_var(self):
+        if self.is_global:
+            return 'VMUX_SESSION'
+        return 'VMUX_SESSION_%s' % self.id
 
-	@property
-	def session(self):
-		if not self._session:
-			# first try to identify the session from the environment variable
-			self._session = os.environ.get(self.session_var)
-		if not self._session:
-			# if the environment didn't produce any result, generate a new
-			# session name
-			self._session = 'global' if self.is_global else self.pane_id
-		return self._session
+    @property
+    def session(self):
+        if not self._session:
+            # first try to identify the session from the environment variable
+            self._session = get_environ(self.session_var)
+        if not self._session:
+            # if the environment didn't produce any result, generate a new
+            # session name
+            self._session = 'global' if self.is_global else self.pane_id
+        return self._session
 
-	@property
-	def global_session(self):
-		# Attention, this property is fundamentally different from self.pane_id.
-		# This property is managed by vmux in order to store the pane id of
-		# global sessions
-		if not self._global_session:
-			self._global_session = os.environ.get('VMUX_GLOBAL_SESSION')
-		return self._global_session
+    @property
+    def global_session(self):
+        # Attention, this property is fundamentally different from self.pane_id.
+        # This property is managed by vmux in order to store the pane id of
+        # global sessions
+        if not self._global_session:
+            self._global_session = get_environ('VMUX_GLOBAL_SESSION')
+        return self._global_session
 
-	def destroy_session(self):
-		cmd = ['tmux', 'set-environment', '-u']
-		if self.is_global:
-			cmd.append('-g')
-		cmd.append(self.session_var)
-		if DEBUG:
-			print(' '.join(cmd))
-		subprocess.call(cmd)
-		self._session = None
-		self._global = None
+    def destroy_session(self):
+        cmd = ['tmux', 'set-environment', '-u']
+        if self.is_global:
+            cmd.append('-g')
+        cmd.append(self.session_var)
+        if DEBUG:
+            print(' '.join(cmd))
+        subprocess.call(cmd)
+        self._session = None
+        self._global = None
 
-	def new_session(self, cli):
-		cmd = ['tmux', 'set-environment']
-		if self.is_global:
-			cmd.append('-g')
-		cmd.extend((self.session_var, self.session))
-		if DEBUG:
-			print(' '.join(cmd))
-		subprocess.call(cmd)
-		if self.is_global and cli:
-			cmd = ['tmux', 'set-environment', '-g', 'VMUX_GLOBAL_PANE', self.pane_id]
-			if DEBUG:
-				print(' '.join(cmd))
-			subprocess.call(cmd)
+    def new_session(self, cli):
+        cmd = ['tmux', 'set-environment']
+        if self.is_global:
+            cmd.append('-g')
+        cmd.extend((self.session_var, self.session))
+        if DEBUG:
+            print(' '.join(cmd))
+        subprocess.call(cmd)
+        if self.is_global and cli:
+            cmd = ['tmux', 'set-environment', '-g', 'VMUX_GLOBAL_PANE', self.pane_id]
+            if DEBUG:
+                print(' '.join(cmd))
+            subprocess.call(cmd)
 
-	def select_pane(self):
-		cmd = ('tmux', 'list-panes', '-a', '-F', '#{window_id} #D')
-		if DEBUG:
-			print(' '.join(cmd))
-		pane_id = self.global_session if self.is_global else self.session
-		for line in subprocess.check_output(cmd).decode('utf-8').split(os.linesep):
-			ids = line.split()
-			if len(ids) != 2:
-				continue
-			if ids[1] == pane_id:
-				cmd = ('tmux', 'select-window', '-t', ids[0])
-				if DEBUG:
-					print(' '.join(cmd))
-				subprocess.call(cmd)
-				cmd = ('tmux', 'select-pane', '-t', ids[1])
-				if DEBUG:
-					print(' '.join(cmd))
-				subprocess.call(cmd)
-				break
+    def select_pane(self):
+        cmd = ('tmux', 'list-panes', '-a', '-F', '#{window_id} #D')
+        if DEBUG:
+            print(' '.join(cmd))
+        pane_id = self.global_session if self.is_global else self.session
+        for line in subprocess.check_output(cmd).decode('utf-8').split(os.linesep):
+            ids = line.split()
+            if len(ids) != 2:
+                continue
+            if ids[1] == pane_id:
+                cmd = ('tmux', 'select-window', '-t', ids[0])
+                if DEBUG:
+                    print(' '.join(cmd))
+                subprocess.call(cmd)
+                cmd = ('tmux', 'select-pane', '-t', ids[1])
+                if DEBUG:
+                    print(' '.join(cmd))
+                subprocess.call(cmd)
+                break
 
 
 def main():
-	v = None
-	try:
-		v = Vmux()
-	except ValueError:
-		# ignore errofr, just start the default editor without any session
-		pass
-	editors = [Neovim(v), Vim(v), Gvim(v)]
+    v = None
+    try:
+        v = Vmux()
+    except ValueError:
+        # ignore errofr, just start the default editor without any session
+        pass
+    editors = [Neovim(v), Vim(v), Gvim(v)]
 
-	if not v:
-		default_editor = Editor.get_default_editor(editors)
-		if not default_editor:
-			print('Unable to find editor %s' % default_editor, file=sys.stderr)
-			return 3
-		return default_editor.new(sys.argv[1:], new_session=False)
+    if not v:
+        print('new')
+        default_editor = Editor.get_default_editor(editors)
+        if not default_editor:
+            print('Unable to find editor %s' % default_editor, file=sys.stderr)
+            return 3
+        return default_editor.new(sys.argv[1:], new_session=False)
 
-	# open files in an existing session
-	if len(sys.argv) >= 2:
-		for e in editors:
-			if e.session_exists:
-				if v.shall_select_pane and e.cli:
-					v.select_pane()
-				return e.open(sys.argv[1:])
+    # open files in an existing session
+    if len(sys.argv) >= 2:
+        for e in editors:
+            if e.session_exists:
+                if v.shall_select_pane and e.cli:
+                    v.select_pane()
+                return e.open(sys.argv[1:])
 
-	# session name exists but there is no corresponding session
-	if v.session:
-		v.destroy_session()
+    # session name exists but there is no corresponding session
+    if v.session:
+        v.destroy_session()
 
-	# start a new session
-	default_editor = Editor.get_default_editor(editors)
-	if not default_editor:
-		print('Unable to find editor %s' % default_editor, file=sys.stderr)
-		return 3
-	return default_editor.new(sys.argv[1:])
+    # start a new session
+    default_editor = Editor.get_default_editor(editors)
+    if not default_editor:
+        print('Unable to find editor %s' % default_editor, file=sys.stderr)
+        return 3
+    return default_editor.new(sys.argv[1:])
 
 
 if __name__ == "__main__":
-	sys.exit(main())
+    sys.exit(main())
