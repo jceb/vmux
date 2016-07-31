@@ -29,6 +29,25 @@ import os
 import subprocess
 import sys
 
+def get_tmux_environ(key, is_global=False):
+	cmd = ['tmux', 'show-environment']
+	if is_global:
+		cmd.append('-g')
+	p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+	env = p.communicate()[0].decode('utf-8').split(os.linesep)
+	for kv in [v.split('=', 1) for v in env if '=' in v]:
+		if len(kv) == 2 and kv[0] == key:
+			return kv[1]
+
+def get_environ(key, default=None, is_global=False):
+	if os.environ.get('TMUX'):
+		v = get_tmux_environ(key, is_global=True)
+		if v:
+			return v
+		else:
+			return os.environ.get(key, default)
+	return os.environ.get(key, default)
+
 DEBUG = os.environ.get('VMUX_DEBUG')
 
 class Editor(object):
@@ -189,7 +208,7 @@ class Vmux(object):
 	def session(self):
 		if not self._session:
 			# first try to identify the session from the environment variable
-			self._session = os.environ.get(self.session_var)
+			self._session = get_environ(self.session_var, is_global=False)
 		if not self._session:
 			# if the environment didn't produce any result, generate a new
 			# session name
@@ -202,7 +221,7 @@ class Vmux(object):
 		# This property is managed by vmux in order to store the pane id of
 		# global sessions
 		if not self._global_session:
-			self._global_session = os.environ.get('VMUX_GLOBAL_SESSION')
+			self._global_session = get_environ('VMUX_GLOBAL_SESSION', is_global=True)
 		return self._global_session
 
 	def destroy_session(self):
