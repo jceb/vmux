@@ -164,13 +164,15 @@ class Neovim(Editor):
 
 class Vmux(object):
 	def __init__(self):
+		self._global = None
 		if not os.environ.get('TMUX'):
-			raise ValueError('No tmux session found')
+			# global session can be started outside tmux
+			if not self.is_global:
+				raise ValueError('No tmux session found')
 		self._id = None
 		self._pane_id = None
 		self._session = None
 		self._global_session = None
-		self._global = None
 		self._shall_select_pane = None
 		self._shall_select_global_pane = None
 
@@ -275,7 +277,7 @@ def main():
 	try:
 		v = Vmux()
 	except ValueError:
-		# ignore errofr, just start the default editor without any session
+		# ignore error, just start the default editor without any session
 		pass
 	editors = [Neovim(v), Vim(v), Gvim(v)]
 
