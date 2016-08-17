@@ -1,4 +1,4 @@
-# vmux
+# [vmux](http://github.com/jceb/vmux)
 vim/neovim session handler within tmux
 
 # Demo
