@@ -29,10 +29,10 @@ install-wrapper: install $(SCRIPTS)
 	@echo installing wrapper scripts to ${DESTDIR}${PREFIX}/bin
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
 	@cp -f ${SCRIPTS} ${DESTDIR}${PREFIX}/bin
-	@chmod 755 ${DESTDIR}${PREFIX}/bin/nvim ${DESTDIR}${PREFIX}/bin/vim
+	@chmod 755 ${DESTDIR}${PREFIX}/bin/nvim.vmux ${DESTDIR}${PREFIX}/bin/vim.vmux ${DESTDIR}${PREFIX}/bin/gvim.vmux
 
 uninstall:
 	@echo removing executable files from ${DESTDIR}${PREFIX}/bin
-	@rm -f ${DESTDIR}${PREFIX}/bin/vmux ${DESTDIR}${PREFIX}/bin/nvim ${DESTDIR}${PREFIX}/bin/vim
+	@rm -f ${DESTDIR}${PREFIX}/bin/vmux ${DESTDIR}${PREFIX}/bin/nvim.vmux ${DESTDIR}${PREFIX}/bin/vim.vmux ${DESTDIR}${PREFIX}/bin/gvim.vmux
 
 .PHONY: clean dist install install-wrapper uninstall
