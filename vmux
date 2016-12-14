@@ -69,6 +69,8 @@ class Editor(object):
 			if e.cmd == default_editor:
 				return e
 
+	def destroy_session(self):
+		pass
 
 class Vim(Editor):
 	cmd = 'vim'
@@ -139,6 +141,10 @@ class Neovim(Editor):
 	@property
 	def session_address(self):
 		return os.path.join(self.session_dir, self._vmux.session)
+
+	def destroy_session(self):
+		if os.path.exists(self.session_address):
+			os.remove(self.session_address)
 
 	def open(self, args):
 		if args[0] == '--':
@@ -294,7 +300,14 @@ def main():
 			if e.session_exists:
 				if v.shall_select_pane and e.cli:
 					v.select_pane()
-				return e.open(sys.argv[1:])
+				try:
+					return e.open(sys.argv[1:])
+				except Exception:
+					import traceback
+					traceback.print_exc()
+					if v.session:
+						v.destroy_session()
+						e.destroy_session()
 
 	# session name exists but there is no corresponding session
 	if v.session:
