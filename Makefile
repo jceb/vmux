@@ -1,7 +1,7 @@
 # #!/usr/bin/env make -f
 # See LICENSE file for copyright and license details.
 
-VERSION = $(shell git tag -l|tail -n 1)
+VERSION = $(shell git tag -l|tail -n 1|sed -e 's/^v//')
 DESTDIR = /usr
 SCRIPTS = scripts/nvim.vmux scripts/vim.vmux scripts/gvim.vmux
 SRC = vmux
