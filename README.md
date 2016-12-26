@@ -1,5 +1,5 @@
 # [vmux](http://github.com/jceb/vmux)
-vim/neovim session handler within tmux
+vim/neovim/kakoune session handler within tmux
 
 # Demo
 
@@ -9,11 +9,11 @@ vim/neovim session handler within tmux
 
 * Each `tmux` session has its own editor session
 * One global editor session can be started
-* Suports [gvim, vim](http://vim.org/) and [neovim](http://neovim.org/)
-* Seamless integration with `gvim`, `vim` and `nvim` through wrapper scripts
+* Suports [gvim, vim](http://vim.org/), [neovim](http://neovim.org/) and [kakoune](http://kakoune.org/)
+* Seamless integration with `gvim`, `vim`, `nvim`, `kak` through wrapper scripts
   that directly call `vmux` - keep your muscle's memory :-)
 * Once a session has been started in one editor, e.g. `nvim`, the session will
-  be reused even if another editor is called, e.g. `vim`
+  be reused even if another editor is called, e.g. `vim` or `kak`
 * A new session is started if the old session doesn't exist anymore
 * Automatically select tmux pane running the local or global vim session
 
@@ -60,6 +60,7 @@ scripts are used that will hide the real editors in `$PATH`.
     export VMUX_REALEDITOR_VIM=/usr/bin/vim
     export VMUX_REALEDITOR_NVIM=/usr/bin/nvim
     export VMUX_REALEDITOR_GVIM=/usr/bin/gvim
+    export VMUX_REALEDITOR_KAK=/usr/bin/kak
 
 Define that a global session should be started.  One global and multiple local
 sessions can exists next to one another:

@@ -3,7 +3,7 @@
 
 VERSION = $(shell git tag -l|tail -n 1|sed -e 's/^v//')
 DESTDIR = /usr
-SCRIPTS = scripts/nvim.vmux scripts/vim.vmux scripts/gvim.vmux
+SCRIPTS = scripts/nvim.vmux scripts/vim.vmux scripts/gvim.vmux scripts/kak.vmux
 SRC = vmux
 
 all: install-wrapper

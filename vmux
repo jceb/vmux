@@ -168,6 +168,53 @@ class Neovim(Editor):
 		os.execve(self.realdeditor, cmd, env)
 
 
+class Kak(Editor):
+	cmd = 'kak'
+	cli = True
+
+	def __init__(self, vmux):
+		self._session_dir = None
+		Editor.__init__(self, vmux)
+
+	def open(self, args):
+		stripped_sep = False
+		if args[0] == '--':
+			args.pop(0)
+			stripped_sep = True
+		if args:
+			return subprocess.call([self.realdeditor, '-c',
+				self._vmux.session.upper()] + args)
+
+	def new(self, args, new_session=True):
+		cmd = [self.realdeditor]
+		if new_session:
+			self._vmux.new_session(self.cli)
+			cmd += ['-s', self._vmux.session]
+		os.execvp(self.realdeditor, cmd + args)
+
+	@property
+	def session_dir(self):
+		if not self._session_dir:
+			self._session_dir = os.path.expandvars(os.path.expanduser(
+				os.environ.get('VMUX_KAK_SESSION_DIR',
+					os.path.join('/', 'tmp', 'kakoune', os.path.expandvars('$USER'))))
+		return self._session_dir
+
+	@property
+	def session_exists(self):
+		if not self._vmux.session:
+			return False
+		return os.path.exists(self.session_address)
+
+	@property
+	def session_address(self):
+		return os.path.join(self.session_dir, self._vmux.session)
+
+	def destroy_session(self):
+		if os.path.exists(self.session_address):
+			os.remove(self.session_address)
+
+
 class Vmux(object):
 	def __init__(self):
 		self._global = None
@@ -285,7 +332,7 @@ def main():
 	except ValueError:
 		# ignore error, just start the default editor without any session
 		pass
-	editors = [Neovim(v), Vim(v), Gvim(v)]
+	editors = [Neovim(v), Vim(v), Gvim(v), Kak(v)]
 
 	if not v:
 		default_editor = Editor.get_default_editor(editors)

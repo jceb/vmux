@@ -1,0 +1,2 @@
+#!/bin/sh
+VMUX_EDITOR=kak VMUX_NOT_SELECT_PANE=0 exec vmux "$@"
