@@ -197,7 +197,7 @@ class Kak(Editor):
 		if not self._session_dir:
 			self._session_dir = os.path.expandvars(os.path.expanduser(
 				os.environ.get('VMUX_KAK_SESSION_DIR',
-					os.path.join('/', 'tmp', 'kakoune', os.path.expandvars('$USER'))))
+					os.path.join('/', 'tmp', 'kakoune', os.path.expandvars('$USER')))))
 		return self._session_dir
 
 	@property
