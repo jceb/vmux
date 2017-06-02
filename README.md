@@ -85,7 +85,8 @@ When `vmux` is called, it defines a variable `VMUX_SESSION_<ID>` that is unique
 to the current `tmux` session.  The value of the variable is set to `<ID>` that
 is used as session name for `vim.vmux` and `nvim.vmux`.  Furthermore, the global
 session that is started through `gvim.vmux` is stored in the environment
-variable `VMUX_SESSION`.  The session name is set to `global`.
+variables `VMUX_SESSION` and `VMUX_GLOBAL_PANE`.  The session name is set to
+`global`.
 
 # Similar projects
 

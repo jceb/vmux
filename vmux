@@ -39,15 +39,6 @@ def get_tmux_environ(key, is_global=False):
 		if len(kv) == 2 and kv[0] == key:
 			return kv[1]
 
-def get_environ(key, default=None, is_global=False):
-	if os.environ.get('TMUX'):
-		v = get_tmux_environ(key, is_global=True)
-		if v:
-			return v
-		else:
-			return os.environ.get(key, default)
-	return os.environ.get(key, default)
-
 DEBUG = os.environ.get('VMUX_DEBUG')
 
 class Editor(object):
@@ -69,6 +60,9 @@ class Editor(object):
 			if e.cmd == default_editor:
 				return e
 
+	def __str__(self):
+		return self.cmd
+
 	def destroy_session(self):
 		pass
 
@@ -81,7 +75,7 @@ class Vim(Editor):
 
 	@property
 	def session_exists(self):
-		if not self._vmux.session:
+		if not self._vmux.session_exists:
 			return False
 		for server in subprocess.check_output([self.realdeditor, '--serverlist']).decode('utf-8').strip().split(os.linesep):
 			if server.upper() == self._vmux.session.upper():
@@ -123,18 +117,20 @@ class Neovim(Editor):
 	def __init__(self, vmux):
 		self._session_dir = None
 		Editor.__init__(self, vmux)
+		if not os.path.exists(self.session_dir):
+			os.makedirs(self.session_dir)
 
 	@property
 	def session_dir(self):
 		if not self._session_dir:
 			self._session_dir = os.path.expandvars(os.path.expanduser(
 				os.environ.get('VMUX_NVIM_SESSION_DIR',
-					os.path.join(os.environ.get('HOME'), '.cache', 'nvim_sessions'))))
+					os.path.join(os.environ.get('HOME'), '.cache', 'tmp', 'nvim_sessions'))))
 		return self._session_dir
 
 	@property
 	def session_exists(self):
-		if not self._vmux.session:
+		if not self._vmux.session_exists:
 			return False
 		return os.path.exists(self.session_address)
 
@@ -161,6 +157,8 @@ class Neovim(Editor):
 		env.update(os.environ)
 		if new_session:
 			env.update({'NVIM_LISTEN_ADDRESS': self.session_address})
+		elif 'NVIM_LISTEN_ADDRESS' in env:
+			del env['NVIM_LISTEN_ADDRESS']
 		cmd = [self.realdeditor] + args
 		if DEBUG:
 			print(' '.join(cmd))
@@ -175,6 +173,8 @@ class Kak(Editor):
 	def __init__(self, vmux):
 		self._session_dir = None
 		Editor.__init__(self, vmux)
+		if not os.path.exists(self.session_dir):
+			os.makedirs(self.session_dir)
 
 	def open(self, args):
 		stripped_sep = False
@@ -197,12 +197,12 @@ class Kak(Editor):
 		if not self._session_dir:
 			self._session_dir = os.path.expandvars(os.path.expanduser(
 				os.environ.get('VMUX_KAK_SESSION_DIR',
-					os.path.join('/', 'tmp', 'kakoune', os.path.expandvars('$USER')))))
+					os.path.join(os.environ.get('HOME'), '.cache', 'tmp', 'kakoune_sessions'))))
 		return self._session_dir
 
 	@property
 	def session_exists(self):
-		if not self._vmux.session:
+		if not self._vmux.session_exists:
 			return False
 		return os.path.exists(self.session_address)
 
@@ -225,9 +225,9 @@ class Vmux(object):
 		self._id = None
 		self._pane_id = None
 		self._session = None
+		self._session_exists = None
 		self._global_session = None
 		self._shall_select_pane = None
-		self._shall_select_global_pane = None
 
 	@property
 	def shall_select_pane(self):
@@ -261,9 +261,9 @@ class Vmux(object):
 
 	@property
 	def session(self):
-		if not self._session:
+		if not self._session and not self.is_global:
 			# first try to identify the session from the environment variable
-			self._session = get_environ(self.session_var, is_global=False)
+			self._session = get_tmux_environ(self.session_var, is_global=False)
 		if not self._session:
 			# if the environment didn't produce any result, generate a new
 			# session name
@@ -271,12 +271,21 @@ class Vmux(object):
 		return self._session
 
 	@property
+	def session_exists(self):
+		if self._session_exists is None:
+			self._session_exists = ''
+			res = get_tmux_environ(self.session_var, is_global=self.is_global)
+			if res is not None:
+				self._session_exists = res
+		return self._session_exists
+
+	@property
 	def global_session(self):
-		# Attention, this property is fundamentally different from self.pane_id.
+		# Attention, this property is fundamentally different from self.session.
 		# This property is managed by vmux in order to store the pane id of
 		# global sessions
 		if not self._global_session:
-			self._global_session = get_environ('VMUX_GLOBAL_SESSION', is_global=True)
+			self._global_session = get_tmux_environ('VMUX_GLOBAL_PANE', is_global=True)
 		return self._global_session
 
 	def destroy_session(self):
@@ -288,7 +297,8 @@ class Vmux(object):
 			print(' '.join(cmd))
 		subprocess.call(cmd)
 		self._session = None
-		self._global = None
+		self._session_exists = None
+		self._global_session = None
 
 	def new_session(self, cli):
 		cmd = ['tmux', 'set-environment']
@@ -333,39 +343,67 @@ def main():
 		# ignore error, just start the default editor without any session
 		pass
 	editors = [Neovim(v), Vim(v), Gvim(v), Kak(v)]
-
-	if not v:
-		default_editor = Editor.get_default_editor(editors)
-		if not default_editor:
-			print('Unable to find editor %s' % default_editor, file=sys.stderr)
-			return 3
-		return default_editor.new(sys.argv[1:], new_session=False)
-
-	# open files in an existing session
-	if len(sys.argv) >= 2:
-		for e in editors:
-			if e.session_exists:
-				if v.shall_select_pane and e.cli:
-					v.select_pane()
-				try:
-					return e.open(sys.argv[1:])
-				except Exception:
-					import traceback
-					traceback.print_exc()
-					if v.session:
-						v.destroy_session()
-						e.destroy_session()
-
-	# session name exists but there is no corresponding session
-	if v.session:
-		v.destroy_session()
-
-	# start a new session
+	editor_with_session = None
 	default_editor = Editor.get_default_editor(editors)
 	if not default_editor:
 		print('Unable to find editor %s' % default_editor, file=sys.stderr)
 		return 3
-	return default_editor.new(sys.argv[1:])
+	new_session = True
+
+	# Behavior:
+	# Outside of tmux:
+	# - open a new instance without spawning a session
+	# vim
+	# - without existing session - open a new session
+	# - with an existing session - open a new instance without spawning a session
+	# vim FILES
+	# - without existing session - open a new session
+	# - with an existing session - open files in existing session
+	if not v:
+		new_session = False
+		print('Running vmux outside TMUX, no enhanced functionality available', file=sys.stderr)
+		return default_editor.new(sys.argv[1:], new_session=new_session)
+
+	# find session in editor
+	if v.session_exists:
+		for e in editors:
+			if e.session_exists:
+				if DEBUG:
+					print('Found editor with session: %s (%s)' % (e, v.session), file=sys.stderr)
+				editor_with_session = e
+
+	# clean up session if it doesn't exist
+	if v.session_exists and not editor_with_session:
+		if DEBUG:
+			print('Destroying session because there is no editor attached to it: %s=%s' % (v.session_var, v.session), file=sys.stderr)
+		v.destroy_session()
+
+	if not v.session_exists:
+		# open new session if there is none
+		if DEBUG:
+			print('Spawning editor with a new session: %s (%s)' % (default_editor, v.session), file=sys.stderr)
+		return default_editor.new(sys.argv[1:], new_session=new_session)
+	else:
+		new_session = False
+		# open files in existing session
+		if len(sys.argv) >= 2 and editor_with_session:
+			if v.shall_select_pane and editor_with_session.cli:
+				if DEBUG:
+					print('Selecting pane with id %s' % v.pane_id, file=sys.stderr)
+				v.select_pane()
+			try:
+				return editor_with_session.open(sys.argv[1:])
+			except Exception:
+				import traceback
+				traceback.print_exc()
+				v.destroy_session()
+				editor_with_session.destroy_session()
+				new_session = True
+		# just the editor was requested, don't start a new session - or the
+		# previous command failed to open files in a new session
+		if DEBUG:
+			print('Spawning editor %s session: %s (%s)' % ({True: 'with a new', False: 'without a'}[new_session], default_editor, v.session), file=sys.stderr)
+		return default_editor.new(sys.argv[1:], new_session=new_session)
 
 
 if __name__ == "__main__":
