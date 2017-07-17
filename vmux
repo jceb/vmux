@@ -29,15 +29,31 @@ import os
 import subprocess
 import sys
 
+TMUX_ENVIRON_CACHE = {}
+TMUX_ENVIRON_CACHE_GLOBAL = {}
+
+def clear_tmux_environ_cache():
+	global TMUX_ENVIRON_CACHE, TMUX_ENVIRON_CACHE_GLOBAL
+	TMUX_ENVIRON_CACHE = {}
+	TMUX_ENVIRON_CACHE_GLOBAL = {}
+
 def get_tmux_environ(key, is_global=False):
+	global TMUX_ENVIRON_CACHE, TMUX_ENVIRON_CACHE_GLOBAL
+	if TMUX_ENVIRON_CACHE:
+		return TMUX_ENVIRON_CACHE.get(key)
+
 	cmd = ['tmux', 'show-environment']
 	if is_global:
 		cmd.append('-g')
 	p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 	env = p.communicate()[0].decode('utf-8').split(os.linesep)
 	for kv in [v.split('=', 1) for v in env if '=' in v]:
-		if len(kv) == 2 and kv[0] == key:
-			return kv[1]
+		if len(kv) == 2:
+			if is_global:
+				TMUX_ENVIRON_CACHE_GLOBAL[kv[0]] = kv[1]
+			else:
+				TMUX_ENVIRON_CACHE[kv[0]] = kv[1]
+	return get_tmux_environ(key, is_global=is_global)
 
 DEBUG = os.environ.get('VMUX_DEBUG')
 
@@ -299,6 +315,7 @@ class Vmux(object):
 		self._session = None
 		self._session_exists = None
 		self._global_session = None
+		clear_tmux_environ_cache()
 
 	def new_session(self, cli):
 		cmd = ['tmux', 'set-environment']
