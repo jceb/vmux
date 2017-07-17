@@ -396,9 +396,7 @@ def main():
 			except Exception:
 				import traceback
 				traceback.print_exc()
-				v.destroy_session()
-				editor_with_session.destroy_session()
-				new_session = True
+				return 1
 		# just the editor was requested, don't start a new session - or the
 		# previous command failed to open files in a new session
 		if DEBUG:
