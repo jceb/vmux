@@ -410,6 +410,10 @@ def main():
 				v.select_pane()
 			try:
 				return editor_with_session.open(sys.argv[1:])
+			except ConnectionRefusedError:
+				v.destroy_session()
+				editor_with_session.destroy_session()
+				new_session = True
 			except Exception:
 				import traceback
 				traceback.print_exc()
