@@ -88,6 +88,13 @@ session that is started through `gvim.vmux` is stored in the environment
 variables `VMUX_SESSION` and `VMUX_GLOBAL_PANE`.  The session name is set to
 `global`.
 
+# Known issues
+
+I noticed with neovim that the session socket doesn't always get removed when it
+ends.  This might causes vmux to permanently fail to start a new session.  It
+can be manually resolved by deleting the stalled socket file in neovim's session
+folder.
+
 # Similar projects
 
 * [tmux-omnivim](https://github.com/andy-lang/tmux-omnivim) creates one global
