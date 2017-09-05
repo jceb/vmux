@@ -179,7 +179,7 @@ class Neovim(Editor):
         nvim = attach('socket', path=self.session_address)
         for f in args[::-1]:
             nvim.command(
-                'e %s' %
+                'tabe %s' %
                 os.path.abspath(os.path.expandvars(os.path.expanduser(f))))
 
     def new(self, args, new_session=True):
