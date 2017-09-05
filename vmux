@@ -211,10 +211,8 @@ class Kak(Editor):
             os.makedirs(self.session_dir)
 
     def open(self, args):
-        stripped_sep = False
         if args[0] == '--':
             args.pop(0)
-            stripped_sep = True
         if args:
             return subprocess.call(
                 [self.realdeditor, '-c',
