@@ -40,6 +40,8 @@ def clear_tmux_environ_cache():
 
 def get_tmux_environ(key, is_global=False):
     global TMUX_ENVIRON_CACHE, TMUX_ENVIRON_CACHE_GLOBAL
+    if is_global and TMUX_ENVIRON_CACHE_GLOBAL:
+        return TMUX_ENVIRON_CACHE_GLOBAL.get(key)
     if TMUX_ENVIRON_CACHE:
         return TMUX_ENVIRON_CACHE.get(key)
 
@@ -324,8 +326,7 @@ class Vmux(object):
         # This property is managed by vmux in order to store the pane id of
         # global sessions
         if not self._global_session:
-            self._global_session = get_tmux_environ(
-                'VMUX_GLOBAL_PANE', is_global=True)
+            self._global_session = get_tmux_environ('VMUX_GLOBAL_PANE', is_global=True)
         return self._global_session
 
     def destroy_session(self):
