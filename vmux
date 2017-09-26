@@ -285,7 +285,7 @@ class Vmux(object):
     @property
     def pane_id(self):
         if not self._pane_id:
-            self._pane_id = os.environ.get('TMUX_PANE')
+            self._pane_id = os.environ.get('TMUX_PANE', '')
         return self._pane_id
 
     @property
