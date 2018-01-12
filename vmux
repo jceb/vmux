@@ -101,11 +101,17 @@ class Vim(Editor):
     def session_exists(self):
         if not self._vmux.session_exists:
             return False
-        for server in subprocess.check_output(
-            [self.realdeditor,
-             '--serverlist']).decode('utf-8').strip().split(os.linesep):
-            if server.upper() == self._vmux.session.upper():
-                return True
+        if os.path.exists(self.realdeditor):
+            try:
+                for server in subprocess.check_output(
+                    [self.realdeditor,
+                    '--serverlist'], stderr=subprocess.PIPE).decode('utf-8').strip().split(os.linesep):
+                    if server.upper() == self._vmux.session.upper():
+                        return True
+            except subprocess.CalledProcessError:
+                if DEBUG:
+                    import traceback
+                    traceback.print_exc()
         return False
 
     def open(self, args):
