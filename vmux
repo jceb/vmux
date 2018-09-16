@@ -208,6 +208,11 @@ class Neovim(Editor):
         os.execve(self.realdeditor, cmd, env)
 
 
+class NeovimQt(Neovim):
+    cmd = 'nvim-qt'
+    cli = False
+
+
 class Kak(Editor):
     cmd = 'kak'
     cli = True
@@ -395,7 +400,7 @@ def main():
     except ValueError:
         # ignore error, just start the default editor without any session
         pass
-    editors = [Neovim(v), Vim(v), Gvim(v), Kak(v)]
+    editors = [Neovim(v), Vim(v), NeovimQt(v), Gvim(v), Kak(v)]
     editor_with_session = None
     default_editor = Editor.get_default_editor(editors)
     if not default_editor:
