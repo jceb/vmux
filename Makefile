@@ -25,7 +25,7 @@ install: vmux
 	cp -f -t ${DESTDIR}${PREFIX}/bin vmux
 	chmod 755 ${DESTDIR}${PREFIX}/bin/vmux
 
-install-wrapper: install $(SCRIPTS)
+install-scripts: install $(SCRIPTS)
 	@echo installing wrapper scripts to ${DESTDIR}${PREFIX}/bin
 	mkdir -p ${DESTDIR}${PREFIX}/bin
 	cp -f -t ${DESTDIR}${PREFIX}/bin ${SCRIPTS}
@@ -36,4 +36,4 @@ uninstall:
 	rm -f ${DESTDIR}${PREFIX}/bin/vmux
 	$(foreach script,$(SCRIPTS),$(shell rm -f ${DESTDIR}${PREFIX}/bin/$(shell basename $(script))))
 
-.PHONY: clean dist install install-wrapper uninstall
+.PHONY: clean dist install install-scripts uninstall
