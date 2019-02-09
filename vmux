@@ -27,6 +27,7 @@
 import os
 import subprocess
 import sys
+from collections import deque
 
 TMUX_ENVIRON_CACHE = {}
 TMUX_ENVIRON_CACHE_GLOBAL = {}
@@ -181,14 +182,44 @@ class Neovim(Editor):
             os.remove(self.session_address)
 
     def open(self, args):
-        if args[0] == '--':
-            args.pop(0)
+
+        filenames = []
+        commands = []
+
+        done = False
+
+        args = deque(args)
+        while args:
+            item = args.popleft()
+
+            if done:
+                pass
+            elif item == '--':
+                done = True
+                continue
+            elif item == '-c':
+                commands += [args.popleft()]
+                continue
+            elif item.startswith('-c'):
+                commands += [item[2:]]
+                continue
+            elif item.startswith('+'):
+                commands += [item[1:]]
+                continue
+
+            filenames += [os.path.abspath(os.path.expandvars(os.path.expanduser(item)))]
+
         from neovim import attach
         nvim = attach('socket', path=self.session_address)
-        for f in args[::-1]:
-            nvim.command(
-                'e %s' %
-                os.path.abspath(os.path.expandvars(os.path.expanduser(f))))
+
+        # get back to normal mode
+        nvim.feedkeys(nvim.replace_termcodes('<Esc>'))
+
+        for filename in reversed(filenames):
+            nvim.command('e %s' % filename)
+
+        for command in commands:
+            nvim.command(command)
 
     def new(self, args, new_session=True):
         if new_session:
