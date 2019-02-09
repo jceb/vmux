@@ -464,6 +464,7 @@ def main():
                         'Found editor with session: %s (%s)' % (e, v.session),
                         file=sys.stderr)
                 editor_with_session = e
+                break
 
     # clean up session if it doesn't exist
     if v.session_exists and not editor_with_session:
