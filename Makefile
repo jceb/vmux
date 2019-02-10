@@ -4,7 +4,7 @@
 VERSION = $(shell git tag -l|tail -n 1|sed -e 's/^v//')
 DESTDIR = /usr
 SCRIPTS = scripts/nvim.vmux scripts/nvim-qt.vmux scripts/vim.vmux scripts/gvim.vmux scripts/kak.vmux
-SRC = vmux
+SRC = vmux/__main__.py
 
 all: install-wrapper
 

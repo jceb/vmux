@@ -21,6 +21,14 @@ vim/neovim/kakoune session handler within tmux
 
 Python3 is required as well as `tmux` and `vim`, `gvim` or `nvim`.
 
+## Via PyPI
+
+Install `vmux` using `pip`:
+
+    $ pip install vmux
+
+## From Source
+
 Clone the repository and install vmux:
 
     git clone https://github.com/jceb/vmux.git
