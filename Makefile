@@ -15,25 +15,25 @@ clean:
 dist: clean
 	@echo creating dist tarball
 	mkdir -p vmux-${VERSION}
-	cp -R -t vmux-${VERSION} LICENSE Makefile README.md ${SRC} scripts
+	cp -R LICENSE Makefile README.md ${SRC} ${SCRIPTS} vmux-${VERSION}
 	tar -zcf vmux-${VERSION}.tar.gz vmux-${VERSION}
 	rm -rf vmux-${VERSION}
 
 install: vmux
 	@echo installing executable file to ${DESTDIR}${PREFIX}/bin
 	mkdir -p ${DESTDIR}${PREFIX}/bin
-	cp -f -t ${DESTDIR}${PREFIX}/bin vmux
+	cp -f ${SRC} ${DESTDIR}${PREFIX}/bin/vmux
 	chmod 755 ${DESTDIR}${PREFIX}/bin/vmux
 
 install-scripts: install $(SCRIPTS)
 	@echo installing wrapper scripts to ${DESTDIR}${PREFIX}/bin
 	mkdir -p ${DESTDIR}${PREFIX}/bin
-	cp -f -t ${DESTDIR}${PREFIX}/bin ${SCRIPTS}
-	$(foreach script,$(SCRIPTS),$(shell chmod 755 ${DESTDIR}${PREFIX}/bin/$(shell basename $(script))))
+	cp -f ${SCRIPTS} ${DESTDIR}${PREFIX}/bin
+	chmod 755 $(foreach script,$(SCRIPTS),${DESTDIR}${PREFIX}/bin/$(shell basename $(script)))
 
 uninstall:
 	@echo removing executable files from ${DESTDIR}${PREFIX}/bin
 	rm -f ${DESTDIR}${PREFIX}/bin/vmux
-	$(foreach script,$(SCRIPTS),$(shell rm -f ${DESTDIR}${PREFIX}/bin/$(shell basename $(script))))
+	rm -f $(foreach script,$(SCRIPTS),${DESTDIR}${PREFIX}/bin/$(shell basename $(script)))
 
 .PHONY: clean dist install install-scripts uninstall
