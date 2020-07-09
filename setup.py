@@ -10,7 +10,6 @@ setup(
     author="Jan Christoph Ebersbach", author_email='jceb@e-jc.de',
     url="https://github.com/jceb/vmux",
     license='GPLv3',
-    package='vmux',
     packages=['vmux'],
     install_requires=[
         'pynvim>=0.3.2',
@@ -26,6 +25,8 @@ setup(
             'vmux = vmux.__main__:main'
         ]
     },
-    use_scm_version=True,
+    use_scm_version={
+        "local_scheme": "no-local-version"
+        },
     zip_safe=False,
 )
