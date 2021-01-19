@@ -106,7 +106,7 @@ class Vim(Editor):
             try:
                 for server in subprocess.check_output(
                     [self.realdeditor,
-                    '--serverlist'], stderr=subprocess.PIPE).decode('utf-8').strip().split(os.linesep):
+                     '--serverlist'], stderr=subprocess.PIPE).decode('utf-8').strip().split(os.linesep):
                     if server.upper() == self._vmux.session.upper():
                         return True
             except subprocess.CalledProcessError:
@@ -207,7 +207,8 @@ class Neovim(Editor):
                 commands += [item[1:]]
                 continue
 
-            filenames += [os.path.abspath(os.path.expandvars(os.path.expanduser(item)))]
+            filenames += [os.path.abspath(
+                os.path.expandvars(os.path.expanduser(item)))]
 
         from pynvim import attach
         nvim = attach('socket', path=self.session_address)
@@ -368,7 +369,8 @@ class Vmux(object):
         # This property is managed by vmux in order to store the pane id of
         # global sessions
         if not self._global_session:
-            self._global_session = get_tmux_environ('VMUX_GLOBAL_PANE', is_global=True)
+            self._global_session = get_tmux_environ(
+                'VMUX_GLOBAL_PANE', is_global=True)
         return self._global_session
 
     def destroy_session(self):
