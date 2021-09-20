@@ -182,13 +182,11 @@ class Neovim(Editor):
             os.remove(self.session_address)
 
     def open(self, args):
-
         filenames = []
         commands = []
-
         done = False
-
         args = deque(args)
+
         while args:
             item = args.popleft()
 
@@ -242,6 +240,11 @@ class Neovim(Editor):
 
 class NeovimQt(Neovim):
     cmd = 'nvim-qt'
+    cli = False
+
+
+class Gnvim(Neovim):
+    cmd = 'gnvim'
     cli = False
 
 
