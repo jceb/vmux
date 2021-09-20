@@ -108,3 +108,7 @@ folder.
 * [tmux-omnivim](https://github.com/andy-lang/tmux-omnivim) creates one global
   session while `vmux` creates one session per `tmux` session and it also
   supports one global session next to multiple local sessions.
+* creates one global
+* [neovim-remote](https://github.com/mhinz/neovim-remote) [tmux-nvr](https://github.com/carlocab/tmux-nvr) creates one global
+  session while `vmux` creates one session per `tmux` session and it also
+  supports one global session next to multiple local sessions.
