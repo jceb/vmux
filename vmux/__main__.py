@@ -208,7 +208,7 @@ class Neovim(Editor):
             filenames += [os.path.abspath(
                 os.path.expandvars(os.path.expanduser(item)))]
 
-        from neovim import attach
+        from pynvim import attach
         nvim = attach('socket', path=self.session_address)
 
         # get back to normal mode
