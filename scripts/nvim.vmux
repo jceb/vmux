@@ -1,2 +1,3 @@
-#!/bin/sh
-VMUX_EDITOR=nvim exec vmux "$@"
+#!/usr/bin/env bash
+set -euo pipefail
+VMUX_EDITOR="nvim" exec vmux "$@"

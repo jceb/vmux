@@ -1,2 +1,3 @@
-#!/bin/sh
-VMUX_EDITOR=kak VMUX_NOT_SELECT_PANE=0 exec vmux "$@"
+#!/usr/bin/env bash
+set -euo pipefail
+VMUX_EDITOR="kak" VMUX_NOT_SELECT_PANE=0 exec vmux "$@"
