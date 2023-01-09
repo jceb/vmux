@@ -70,7 +70,7 @@ class Vmux(object):
     _session: str = ""
     _session_exists: str | None = None
     _global_session: str | None = None
-    _shall_select_pane: bool = False
+    _shall_select_pane: bool | None = None
 
     def __init__(self):
         super().__init__()
@@ -441,6 +441,12 @@ class Neovim(Editor):
     def destroy_session(self) -> None:
         if os.path.exists(self.session_address):
             os.remove(self.session_address)
+
+    def open(self, args: list[str]):
+        return subprocess.call(
+            [self.realdeditor, "--server", self.session_address, "--remote-silent"]
+            + args
+        )
 
     def new(self, args: list[str], new_session: bool = True):
         if not args:
