@@ -31,6 +31,7 @@ import sys
 
 TMUX_ENVIRON_CACHE = {}
 TMUX_ENVIRON_CACHE_GLOBAL = {}
+DEBUG = os.environ.get("VMUX_DEBUG")
 
 
 def clear_tmux_environ_cache():
@@ -60,7 +61,14 @@ def get_tmux_environ(key: str, is_global: bool = False) -> str | None:
     return get_tmux_environ(key, is_global=is_global)
 
 
-DEBUG = os.environ.get("VMUX_DEBUG")
+def args_to_absolute_paths(args: list[str]):
+    abs_args = []
+    for arg in args:
+        if arg.startswith("-") or os.path.isabs(arg):
+            abs_args.append(arg)
+        else:
+            abs_args.append(os.path.join(os.getcwd(), arg))
+    return abs_args
 
 
 class Vmux(object):
@@ -153,7 +161,7 @@ class Vmux(object):
             cmd.append("-g")
         cmd.append(self.session_var)
         if DEBUG:
-            print(" ".join(cmd))
+            print("Executing command:", " ".join(cmd), file=sys.stderr)
         subprocess.call(cmd)
         self._session = ""
         self._session_exists = None
@@ -166,18 +174,18 @@ class Vmux(object):
             cmd.append("-g")
         cmd.extend((self.session_var, self.session))
         if DEBUG:
-            print(" ".join(cmd))
+            print("Executing command:", " ".join(cmd), file=sys.stderr)
         subprocess.call(cmd)
         if self.is_global and cli:
             cmd = ["tmux", "set-environment", "-g", "VMUX_GLOBAL_PANE", self.pane_id]
             if DEBUG:
-                print(" ".join(cmd))
+                print("Executing command:", " ".join(cmd), file=sys.stderr)
             subprocess.call(cmd)
 
     def select_pane(self, pane_id: str | None = "") -> None:
         cmd = ("tmux", "list-panes", "-a", "-F", "#{window_id} #D")
         if DEBUG:
-            print(" ".join(cmd))
+            print("Executing command:", " ".join(cmd), file=sys.stderr)
         if not pane_id:
             pane_id = self.global_session if self.is_global else self.session
         for line in subprocess.check_output(cmd).decode("utf-8").split(os.linesep):
@@ -187,11 +195,11 @@ class Vmux(object):
             if ids[1] == pane_id:
                 cmd = ("tmux", "select-window", "-t", ids[0])
                 if DEBUG:
-                    print(" ".join(cmd))
+                    print("Executing command:", " ".join(cmd), file=sys.stderr)
                 subprocess.call(cmd)
                 cmd = ("tmux", "select-pane", "-t", ids[1])
                 if DEBUG:
-                    print(" ".join(cmd))
+                    print("Executing command:", " ".join(cmd), file=sys.stderr)
                 subprocess.call(cmd)
                 break
 
@@ -203,7 +211,8 @@ def main():
     except ValueError:
         # ignore error, just start the default editor without any session
         pass
-    editors = [Nvr(v), Neovim(v), Vim(v), NeovimQt(v), Gvim(v), Kak(v)]
+    editors = [Neovim(v)]
+    # editors = [Nvr(v), Neovim(v), Vim(v), NeovimQt(v), Gvim(v), Kak(v)]
     editor_with_session = None
     default_editor = Editor.get_default_editor(editors)
     if not default_editor:
@@ -351,10 +360,17 @@ class Vim(Editor):
 
     @property
     def session_exists(self):
+        print("session_exists", file=sys.stderr)
         if not self._vmux.session_exists:
             return False
         if os.path.exists(self.realdeditor):
             try:
+                if DEBUG:
+                    print(
+                        "Executing command:",
+                        " ".join([self.realdeditor, "--serverlist"]),
+                        file=sys.stderr,
+                    )
                 for server in (
                     subprocess.check_output(
                         [self.realdeditor, "--serverlist"], stderr=subprocess.PIPE
@@ -377,26 +393,24 @@ class Vim(Editor):
         if args[0] == "--":
             args.pop(0)
             stripped_sep = True
+        cmd = [self.realdeditor, "--servername", self._vmux.session.upper()]
         if args and not stripped_sep and args[0].startswith("-"):
-            return subprocess.call(
-                [self.realdeditor, "--servername", self._vmux.session.upper()] + args
-            )
-        return subprocess.call(
-            [
-                self.realdeditor,
-                "--servername",
-                self._vmux.session.upper(),
-                "--remote-silent",
-            ]
-            + args
-        )
+            cmd += args_to_absolute_paths(args)
+        else:
+            cmd += ["--remote-silent"] + args_to_absolute_paths(args)
+        if DEBUG:
+            print("Executing command:", " ".join(cmd), file=sys.stderr)
+        os.execvp(cmd[0], cmd)
 
     def new(self, args, new_session=True):
         cmd = [self.realdeditor]
         if new_session:
             self._vmux.new_session(self.cli)
             cmd += ["--servername", self._vmux.session]
-        os.execvp(self.realdeditor, cmd + args)
+        cmd += args_to_absolute_paths(args)
+        if DEBUG:
+            print("Executing command:", " ".join(cmd), file=sys.stderr)
+        os.execvp(self.realdeditor, cmd)
 
 
 class Gvim(Vim):
@@ -443,10 +457,15 @@ class Neovim(Editor):
             os.remove(self.session_address)
 
     def open(self, args: list[str]):
-        return subprocess.call(
-            [self.realdeditor, "--server", self.session_address, "--remote-silent"]
-            + args
-        )
+        cmd = [
+            self.realdeditor,
+            "--server",
+            self.session_address,
+            "--remote-silent",
+        ] + args_to_absolute_paths(args)
+        if DEBUG:
+            print("Executing command:", " ".join(cmd), file=sys.stderr)
+        return subprocess.call(cmd)
 
     def new(self, args: list[str], new_session: bool = True):
         if not args:
@@ -465,10 +484,10 @@ class Neovim(Editor):
             cmd.extend(["--listen", self.session_address])
         else:
             cmd.extend(["--server", self.session_address, "--remote-silent"])
-        cmd.extend(args)
+        cmd.extend(args_to_absolute_paths(args))
         if DEBUG:
-            print(" ".join(cmd))
-            print(env)
+            print("Executing command:", " ".join(cmd), file=sys.stderr)
+            print(env, file=sys.stderr)
         os.execve(self.realdeditor, cmd, env)
 
 
@@ -507,16 +526,21 @@ class Nvr(Neovim):
             env.update({"NVIM_LISTEN_ADDRESS": self.session_address})
         else:
             cmd.extend(["--servername", self.session_address, "--remote-silent"])
-        cmd.extend(args)
+        cmd.extend(args_to_absolute_paths(args))
         if DEBUG:
-            print(" ".join(cmd))
-            print(env)
-        os.execve(self.realdeditor, cmd, env)
+            print("Executing command:", " ".join(cmd), file=sys.stderr)
+            print(env, file=sys.stderr)
+        os.execve(cmd[0], cmd, env)
 
     def open(self, args):
-        return subprocess.call(
-            [self.realdeditor, "--servername", self.session_address] + args
-        )
+        cmd = [
+            self.realdeditor,
+            "--servername",
+            self.session_address,
+        ] + args_to_absolute_paths(args)
+        if DEBUG:
+            print("Executing command:", " ".join(cmd), file=sys.stderr)
+        os.execvp(cmd[0], cmd)
 
 
 class NeovimQt(Neovim):
@@ -544,8 +568,15 @@ class Kak(Editor):
         super().__init__(vmux)
 
     def open(self, args):
+        if DEBUG:
+            print(
+                "Executing command:",
+                " ".join([self.realdeditor, "-c", self._vmux.session.upper()]),
+                file=sys.stderr,
+            )
         return subprocess.call(
-            [self.realdeditor, "-c", self._vmux.session.upper()] + args
+            [self.realdeditor, "-c", self._vmux.session.upper()]
+            + args_to_absolute_paths(args)
         )
 
     def new(self, args: list[str], new_session: bool = True):
@@ -553,7 +584,9 @@ class Kak(Editor):
         if new_session:
             self._vmux.new_session(self.cli)
             cmd += ["-s", self._vmux.session]
-        os.execvp(self.realdeditor, cmd + args)
+        if DEBUG:
+            print("Executing command:", " ".join(cmd), file=sys.stderr)
+        os.execvp(self.realdeditor, cmd + args_to_absolute_paths(args))
 
     @property
     def session_dir(self):
